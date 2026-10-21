@@ -32,7 +32,7 @@ All the finance math lives in the engine as pure functions, with no HTTP, files,
 
 ### Follow a request through the code
 
-What happens when the frontend sends `POST /fees`, file by file. Every source file starts with a comment showing this same path.
+What happens when the frontend sends `POST /fees`, file by file.
 
 | Step | File | What happens |
 |---|---|---|
@@ -81,8 +81,8 @@ backend/
     api/                                     HTTP endpoints, request/response shapes, error handling
   src/main/resources/application.properties  app settings
   src/test/java/com/staythecourse/           tests, mirroring the folders above
-frontend/
-data/                                        fund info and historical returns
+frontend/                                    React app (not built yet)
+data/                                        historical returns and fund list (not added yet)
 DECISIONS.md
 ```
 
