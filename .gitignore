@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Frontend
+node_modules/
+dist/
+
+# Secrets (never commit AWS keys or .env files)
+.env
+.env.*
+
+# macOS
+.DS_Store
