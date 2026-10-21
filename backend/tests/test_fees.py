@@ -1,6 +1,6 @@
 import pytest
 
-from engine.fees import fee_cost, project_balances
+from engine.fees import compare_fees, project_balances
 
 
 def test_zero_years_returns_only_the_starting_balance():
@@ -49,8 +49,10 @@ def test_rejects_negative_inputs():
         project_balances(initial=10_000, annual_return=0.07, expense_ratio=-0.01, years=30)
 
 
-def test_fee_cost_is_the_gap_between_the_two_balances():
-    cost = fee_cost(
+def test_compare_fees_returns_both_projections_and_the_gap():
+    result = compare_fees(
         initial=10_000, annual_return=0.07, fund_fee=0.01, baseline_fee=0.0004, years=30
     )
-    assert cost == pytest.approx(75_273.45 - 57_434.91, abs=0.02)
+    assert result.fund_balances[-1] == pytest.approx(57_434.91, abs=0.01)
+    assert result.baseline_balances[-1] == pytest.approx(75_273.45, abs=0.01)
+    assert result.fee_cost == pytest.approx(75_273.45 - 57_434.91, abs=0.02)

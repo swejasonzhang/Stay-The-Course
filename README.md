@@ -51,14 +51,16 @@ DECISIONS.md
 
 ## Running locally
 
-Requires [uv](https://docs.astral.sh/uv/). To run the engine tests:
+Requires [uv](https://docs.astral.sh/uv/). From `backend/`:
 
 ```
-cd backend
-uv run pytest
+uv run pytest                              # run all tests
+uv run uvicorn api.main:app --reload       # start the API on http://127.0.0.1:8000
 ```
 
-Instructions for the API and frontend will be added as they're built.
+With the API running, open http://127.0.0.1:8000/docs to try each endpoint in the browser.
+
+Frontend instructions will be added once it's built.
 
 ## Design decisions
 

@@ -1,8 +1,10 @@
 """Fee drag: how an expense ratio shrinks a balance over time.
 
-Everything here is a pure function: numbers in, numbers out, with no HTTP,
-files or database.
+Everything here is pure: numbers in, numbers out, with no HTTP, files
+or database.
 """
+
+from dataclasses import dataclass
 
 
 def project_balances(
@@ -35,19 +37,36 @@ def project_balances(
     return balances
 
 
-def fee_cost(
+@dataclass
+class FeeComparison:
+    """The same investment projected under two fees."""
+
+    fund_balances: list[float]
+    baseline_balances: list[float]
+    fee_cost: float
+
+
+def compare_fees(
     *,
     initial: float,
     annual_return: float,
     fund_fee: float,
     baseline_fee: float,
     years: int,
-) -> float:
-    """Dollars lost after `years` by paying fund_fee instead of baseline_fee."""
-    with_fund_fee = project_balances(
+) -> FeeComparison:
+    """Project the investment under fund_fee and under baseline_fee.
+
+    fee_cost is the dollars lost after `years` by paying fund_fee
+    instead of baseline_fee.
+    """
+    fund_balances = project_balances(
         initial=initial, annual_return=annual_return, expense_ratio=fund_fee, years=years
-    )[-1]
-    with_baseline_fee = project_balances(
+    )
+    baseline_balances = project_balances(
         initial=initial, annual_return=annual_return, expense_ratio=baseline_fee, years=years
-    )[-1]
-    return with_baseline_fee - with_fund_fee
+    )
+    return FeeComparison(
+        fund_balances=fund_balances,
+        baseline_balances=baseline_balances,
+        fee_cost=baseline_balances[-1] - fund_balances[-1],
+    )

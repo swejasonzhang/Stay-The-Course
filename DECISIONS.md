@@ -30,7 +30,7 @@ Rejected: math inside the route
 
 Chosen: split
   engine/fees.py   the fee math (pure functions)
-  api/routes.py    read JSON, check fields → call the engine → build JSON
+  api/main.py      read JSON, check fields → call the engine → build JSON
 ```
 
 **Trade-off**
