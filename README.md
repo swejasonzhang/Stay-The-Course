@@ -51,7 +51,14 @@ DECISIONS.md
 
 ## Running locally
 
-Setup instructions will be added once the engine and API run.
+Requires [uv](https://docs.astral.sh/uv/). To run the engine tests:
+
+```
+cd backend
+uv run pytest
+```
+
+Instructions for the API and frontend will be added as they're built.
 
 ## Design decisions
 
