@@ -1,0 +1,5 @@
+# Line endings: mvnw is a Mac/Linux shell script and must keep Unix line
+# endings (lf); mvnw.cmd is for Windows and needs Windows ones (crlf). This
+# keeps both working no matter which computer checks out the repo.
+/mvnw text eol=lf
+*.cmd text eol=crlf
