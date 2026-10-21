@@ -5,32 +5,32 @@ The non-obvious choices in Stay the Course: what I chose, why, what I rejected, 
 ---
 
 ## 1. Keep the finance math separate from the API
-*2026-10-20*
+*2026-10-20, updated for Java 2026-10-21*
 
 **Decision**
-The backend has two folders. `engine/` holds all the finance math as pure functions, with no HTTP, files or database. `api/` is a thin FastAPI layer that checks each request, calls the engine and returns JSON. Dependencies point one way: `api/` imports `engine/`, and `engine/` never imports FastAPI or Pydantic.
+The backend has two packages. `engine` holds all the finance math as pure functions, with no HTTP, files, database or Spring. `api` is a thin Spring Boot layer that checks each request, calls the engine and returns JSON. Dependencies point one way: `api` imports `engine`, and `engine` never imports anything from Spring or from `api`.
 
 **Why**
-- **Testing.** I can call an engine function directly in a test and compare the result with a known formula. If an engine test fails, the bug is in the math, not in the request, the validation or the JSON.
-- **Reuse.** If the math lived inside a route handler, an HTTP request would be the only way to run it. As its own module, any code can import it. The Monte Carlo simulator reuses the yearly growth logic, and a script or notebook can call the engine without starting a server.
+- **Testing.** I can call an engine method directly in a test and compare the result with a known formula. If an engine test fails, the bug is in the math, not in the request, the validation or the JSON.
+- **Reuse.** If the math lived inside a controller, an HTTP request would be the only way to run it. As its own package, any code can call it: the Monte Carlo simulator reuses the yearly growth logic.
 - **Separate reasons to change.** The API changes when the contract with the frontend changes, such as a renamed field or a new error code. The engine changes when the math changes. Keeping them apart means a change to one can't break the other.
 
-**Follow-up: why not test everything through FastAPI's TestClient?**
-TestClient makes route tests cheap, but when a route test fails, the cause could be a badly built request, a mismatched field name, rejected input, different serialization or wrong math. So I test each layer on its own. Many fast engine tests check the math against exact numbers, and a few TestClient tests check the contract: missing fields are rejected and responses have the right shape.
+**Follow-up: why not test everything through the HTTP layer with MockMvc?**
+MockMvc makes endpoint tests cheap, but when one fails, the cause could be a badly built request, a mismatched field name, rejected input, different JSON output or wrong math. So I test each layer on its own. Many fast engine tests check the math against exact numbers, and a few MockMvc tests check the contract: missing fields are rejected and responses have the right shape.
 
 **Rejected alternative**
-Writing the math directly inside the route handlers:
+Writing the math directly inside the controller:
 
 ```
-Rejected: math inside the route
+Rejected: math inside the controller
   POST /fees:
     read JSON, check fields
     loop 30 years: grow balance, subtract fee
     build JSON response
 
 Chosen: split
-  engine/fees.py   the fee math (pure functions)
-  api/main.py      read JSON, check fields → call the engine → build JSON
+  engine/FeeCalculator.java   the fee math (pure functions)
+  api/FeeController.java      read JSON, check fields → call the engine → build JSON
 ```
 
 **Trade-off**
@@ -38,39 +38,60 @@ More files, and one more layer to trace through when following a request. For a 
 
 ---
 
-## 2. Pydantic schemas live in `api/schemas.py`
-*2026-10-20*
+## 2. Request rules live on `api/FeeRequest.java`
+*2026-10-21*
 
 **Decision**
-The Pydantic request and response models live in `backend/api/schemas.py`, not inside the route handlers and not in `engine/`.
+The rules for incoming JSON (required fields and allowed ranges) are Bean Validation annotations such as `@NotNull` and `@DecimalMax` on the `FeeRequest` record in the `api` package. The controller's `@Valid` triggers the check. `ApiErrorHandler` turns failures into JSON errors with two status codes:
+- **400** when the body can't be read at all: it isn't JSON, or a whole-number field such as `years` got a decimal
+- **422** when the JSON was read but a value broke a rule, with each bad field named: `{"years": "must be less than or equal to 100"}`
+
+`application.properties` turns off Jackson's `accept-float-as-int` setting, so `"years": 30.5` is rejected instead of quietly becoming 30.
 
 **Why**
-These models describe the JSON the frontend sends and receives, which is the API's contract and an HTTP concern. Routes turn a validated request into plain Python values before calling the engine, so the engine never sees a Pydantic object.
+These rules describe the JSON the frontend sends, which is the API's contract and an HTTP concern. The API also caps values (for example, at most 100 years) so that one public request can't tie up the server. The engine has its own, looser guards for code that calls it directly.
 
 **Rejected alternatives**
-- **Inside the route file:** fine at first, but crowded once three modules' worth of endpoints share it.
-- **In `engine/`:** the engine would have to import Pydantic and know the shape of the HTTP contract, which breaks decision 1.
-
-**Naming**
-`schemas.py`, not `models.py`, because in many Python projects "models" means database tables.
+- **Annotations on the engine's methods:** the engine would depend on the validation library and on the HTTP contract, which breaks decision 1.
+- **Primitive `double` and `int` fields:** a primitive can't be null, so a missing field makes the JSON reader fail with a 400 that doesn't say which field is missing. Boxed `Double` and `Integer` with `@NotNull` give a 422 that names it.
 
 **Trade-off**
-Each route needs a small conversion step from schema to plain values and back.
+`FeeRequest` and the engine's method parameters list the same five values, so adding an input means changing both.
 
 ---
 
-## 3. Build in Python first, port to Java later
-*2026-10-20*
+## 3. Write the backend in Java with Spring Boot
+*2026-10-21 (switched from Python)*
 
 **Decision**
-Version 1 is Python: NumPy for the engine and FastAPI for the API. After I apply, I'll port the rebalancer to Java with Spring Boot.
+The backend is Java 21 with Spring Boot 4, built with Maven. The first version was Python with FastAPI; it was ported once the fee engine and its endpoint worked. The Python version is still in the git history.
 
 **Why**
-I have about a month, roughly 100 hours. Python is my stronger language, so that time goes into the math, the tests and the design instead of learning a new language at the same time. Java is a standard backend language at large financial firms, so porting one module afterward shows I can pick up a new stack. The Python tests also double as a spec for the port.
+Java and Spring Boot are standard for backend services at large financial firms, and that's the stack I want to be fluent in. The project was still small (one engine module and one endpoint), so switching early cost little compared with porting three modules later.
 
 **Rejected alternatives**
-- **Java and Spring Boot from day one:** learning a language, a framework and the finance in one month would leave parts of the project I can't fully explain.
-- **All TypeScript:** fastest to build, but shows the least new skill.
+- **Keep Python and port only the rebalancer to Java later:** two languages in one backend, and the main version wouldn't be in the language I'm aiming for.
+- **Java without Spring Boot:** less going on behind the scenes, but Spring Boot is what most Java backend teams use.
 
 **Trade-off**
-Version 1 isn't written in the language a backend team at a large finance firm is most likely to use. The Java port is a planned follow-up, not part of version 1.
+Java is wordier than Python, and Spring Boot does a lot through annotations that run code behind the scenes. Spring Boot also starts more slowly (about 2.5 seconds locally), which matters on AWS Lambda, where a cold start happens on the first request after the function has been idle.
+
+---
+
+## 4. Deploy on AWS with API Gateway, Lambda, S3 and Athena
+*2026-10-21 (planned)*
+
+**Decision**
+- **API Gateway and Lambda** run the backend. API Gateway gives the API a public HTTPS URL, and Lambda runs the Spring Boot app only when a request arrives.
+- **S3 and CloudFront** host the built frontend, and S3 also holds the data files.
+- **Athena** runs SQL over the historical returns data in S3 to work out the average return and volatility the Monte Carlo simulator uses.
+- **IAM** gives each piece only the access it needs.
+
+**Why**
+These are services that engineers at large financial firms use every day, suggested by a friend who works with them. The engine is stateless, with no database and nothing remembered between requests, so it fits Lambda's run-per-request model. Storing real return data in S3 and analyzing it with Athena answers the question "where do your return assumptions come from?" with real data instead of numbers typed into the code.
+
+**Athena runs ahead of time, not per request**
+An Athena query takes seconds, because it's built for analyzing large amounts of data, not for fast responses. So Athena's results are saved to S3, and the API only reads those saved results.
+
+**Trade-off**
+More moving parts than a single server, and more setup: permissions for each service. Spring Boot also starts slowly on Lambda (a cold start); Lambda SnapStart is the planned fix.

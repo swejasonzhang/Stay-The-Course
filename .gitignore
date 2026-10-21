@@ -1,8 +1,8 @@
-# Python
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
+# Java / Maven
+target/
+
+# Local Java version pin for SDKMAN (names a JDK on this machine only)
+.sdkmanrc
 
 # Frontend
 node_modules/
@@ -12,5 +12,7 @@ dist/
 .env
 .env.*
 
-# macOS
+# Editors and macOS
+.idea/
+.vscode/
 .DS_Store
