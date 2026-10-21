@@ -1,27 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  =============================================================================
-  pom.xml: Maven's project file. MERN equivalent: package.json.
-  It names the project, sets the Java version, lists the libraries it depends
-  on, and tells Maven how to build it. (POM stands for Project Object Model.)
-
-  Common commands, run from backend/:
-    ./mvnw test              compile and run every test               (npm test)
-    ./mvnw spring-boot:run   start the API on http://localhost:8080   (npm start)
-    ./mvnw package           build one runnable .jar file in target/  (npm run build)
-
-  ./mvnw is the Maven wrapper: it downloads the right version of Maven the
-  first time it runs, so nobody needs Maven installed. Downloaded libraries
-  are cached in ~/.m2/ (like a shared node_modules for every Java project).
-  =============================================================================
--->
+<!-- Maven build file (like package.json). From backend/: ./mvnw test, ./mvnw spring-boot:run, ./mvnw package -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<!-- Inherit Spring Boot's defaults: versions of every Spring library that are
-	     known to work together, UTF-8 source files, and sensible build settings.
-	     That's why the dependencies below don't need version numbers. -->
+	<!-- Spring Boot's defaults, including compatible versions for every dependency below. -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -29,9 +12,6 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
-	<!-- The project's ID. groupId is usually a reversed domain name, and
-	     artifactId is the project name. SNAPSHOT means "work in progress, not a
-	     released version". Together they name the .jar that ./mvnw package builds. -->
 	<groupId>com.staythecourse</groupId>
 	<artifactId>stay-the-course</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
@@ -39,30 +19,22 @@
 	<description>Finance engine and API for Stay the Course</description>
 
 	<properties>
-		<!-- Compile for Java 21. -->
 		<java.version>21</java.version>
 	</properties>
 
-	<!-- Libraries the app uses. A "starter" is Spring Boot's bundle of related
-	     libraries that work together, so one entry pulls in several. -->
 	<dependencies>
-		<!-- Bean Validation: makes @NotNull, @DecimalMax and the other rules in
-		     FeeRequest.java work. -->
+		<!-- Validation rules such as @NotNull and @DecimalMax. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
-		<!-- Spring MVC (controllers like FeeController), an embedded Tomcat web
-		     server, and Jackson for converting JSON. The Express of this project. -->
+		<!-- Spring MVC, the embedded Tomcat web server, and Jackson for JSON. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
-		<!-- Test-only libraries. scope "test" means they're used by ./mvnw test but
-		     left out of the built app, like devDependencies in package.json.
-		     Together they bring JUnit, MockMvc, @WebMvcTest and matchers such as
-		     hasSize and closeTo. -->
+		<!-- Test-only, like devDependencies: JUnit, MockMvc and @WebMvcTest. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation-test</artifactId>
@@ -77,8 +49,7 @@
 
 	<build>
 		<plugins>
-			<!-- Adds the spring-boot:run command, and packages the app plus all its
-			     libraries into one runnable .jar file. -->
+			<!-- Adds spring-boot:run and builds a single runnable .jar. -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
