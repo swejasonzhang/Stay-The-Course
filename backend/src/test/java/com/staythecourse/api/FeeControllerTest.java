@@ -33,7 +33,7 @@ class FeeControllerTest {
     @Test
     void validRequestReturnsBothProjectionsAndTheCost() throws Exception {
         mockMvc.perform(post("/fees").contentType(MediaType.APPLICATION_JSON).content(VALID_REQUEST))
-                .andExpect(status().isOk())
+                .andExpect(status().isOk()) // 200
                 .andExpect(jsonPath("$.fundBalances", hasSize(31)))
                 .andExpect(jsonPath("$.baselineBalances", hasSize(31)))
                 .andExpect(jsonPath("$.feeCost", closeTo(17_838.54, 0.02)));
@@ -68,14 +68,14 @@ class FeeControllerTest {
     void decimalYearsAreRejected() throws Exception {
         String body = REQUEST_TEMPLATE.formatted("10000", "0.07", "0.01", "0.0004", "30.5");
         mockMvc.perform(post("/fees").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isBadRequest()) // 400
                 .andExpect(jsonPath("$.error").exists());
     }
 
     @Test
     void bodyThatIsNotJsonIsRejected() throws Exception {
         mockMvc.perform(post("/fees").contentType(MediaType.APPLICATION_JSON).content("hello"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isBadRequest()) // 400
                 .andExpect(jsonPath("$.error").exists());
     }
 }
