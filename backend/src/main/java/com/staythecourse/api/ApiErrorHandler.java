@@ -10,22 +10,22 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// Turns bad requests into JSON errors for every controller:
-// 400 if the body can't be read, 422 if a FeeRequest rule fails.
+// Turns bad requests into JSON errors for every controller.
+// The @ResponseStatus line above each method sets the status code it sends.
 @RestControllerAdvice
 public class ApiErrorHandler {
 
-    // Not JSON, or a wrong type such as a decimal for years.
+    // Checkpoint 1 (reading): not JSON, or a wrong type such as a decimal for years.
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.BAD_REQUEST) // 400
     public Map<String, String> handleUnreadableBody(HttpMessageNotReadableException exception) {
         return Map.of("error",
                 "Request body must be JSON with a number in every field, and years must be a whole number");
     }
 
-    // Valid JSON, but @Valid found broken rules. Returns {"field": "message", ...}.
+    // Checkpoint 2 (rules): valid JSON, but @Valid found broken rules. Returns {"field": "message", ...}.
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT) // 422
     public Map<String, String> handleInvalidRequest(MethodArgumentNotValidException exception) {
         Map<String, String> errors = new LinkedHashMap<>();
         for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {
