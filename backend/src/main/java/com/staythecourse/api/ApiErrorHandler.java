@@ -15,12 +15,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiErrorHandler {
 
-    // Checkpoint 1 (reading): not JSON, or a wrong type such as a decimal for years.
+    // Checkpoint 1 (reading): not JSON, or a wrong type such as a decimal for years or an unknown asset class.
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST) // 400
     public Map<String, String> handleUnreadableBody(HttpMessageNotReadableException exception) {
         return Map.of("error",
-                "Request body must be JSON with a number in every field, and years must be a whole number");
+                "Request body must be valid JSON with the right type in every field "
+                        + "(numbers as numbers, whole numbers for years, and a known asset class)");
     }
 
     // Checkpoint 2 (rules): valid JSON, but @Valid found broken rules. Returns {"field": "message", ...}.

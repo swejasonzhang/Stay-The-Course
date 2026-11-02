@@ -48,6 +48,19 @@
 	</dependencies>
 
 	<build>
+		<!-- Besides the usual resources, copy the repo's historical returns CSV into the app as data/historical-returns.csv. -->
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<resource>
+				<directory>../data</directory>
+				<includes>
+					<include>historical-returns.csv</include>
+				</includes>
+				<targetPath>data</targetPath>
+			</resource>
+		</resources>
 		<plugins>
 			<!-- Adds spring-boot:run and builds a single runnable .jar. -->
 			<plugin>
