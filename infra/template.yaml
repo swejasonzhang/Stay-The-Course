@@ -1,0 +1,269 @@
+# Everything Stay the Course needs on AWS, in one CloudFormation template.
+# Deploy with infra/deploy.sh; remove everything with infra/destroy.sh.
+#
+#   Browser ──HTTPS──▶ CloudFront ──▶ S3 (the built React site)
+#   Browser ──HTTPS──▶ API Gateway ──▶ Lambda (the Spring Boot app)
+#   You ──SQL──▶ Athena ──▶ S3 (historical-returns.csv)
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Stay the Course - Spring Boot API on Lambda, React site on S3 + CloudFront, returns data in S3 for Athena.
+
+Resources:
+  # ---------- Backend: API Gateway + Lambda ----------
+
+  # The Spring Boot jar runs inside Lambda. The Lambda Web Adapter layer starts it with run.sh and
+  # forwards each API Gateway request to it on port 8080, so the app runs unchanged.
+  # SAM also creates its IAM role, which only allows writing logs: the app needs nothing else,
+  # because its data file is inside the jar.
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: build/backend/
+      Handler: run.sh
+      Runtime: java21
+      Architectures: [arm64]
+      MemorySize: 1536
+      Timeout: 30
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerArm64:30
+      Environment:
+        Variables:
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_PORT: "8080"
+          AWS_LWA_READINESS_CHECK_PATH: /assumptions
+          # Only the CloudFront site may call the API from a browser (see CorsConfig.java).
+          APP_CORS_ALLOWEDORIGINS: !Sub https://${SiteDistribution.DomainName}
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+
+  # The public HTTPS front door for the API. Throttling caps requests per second so a flood of
+  # traffic can't run up the bill.
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
+
+  # Keep Lambda logs for two weeks instead of forever.
+  ApiFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ApiFunction}
+      RetentionInDays: 14
+
+  # ---------- Frontend: S3 + CloudFront ----------
+
+  # Private bucket for the built site. Only CloudFront can read it (see SiteBucketPolicy).
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Lets CloudFront sign its requests to the private bucket.
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${AWS::StackName}-site
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Serves the site over HTTPS from edge locations near each visitor.
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: site
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          # AWS's managed "CachingOptimized" policy.
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+
+  # IAM resource policy: only this CloudFront distribution may read the site files.
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${SiteBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}
+
+  # ---------- Data: S3 + Athena ----------
+
+  # historical-returns/ holds the CSV; athena-results/ holds query output, deleted after 30 days.
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-athena-results
+            Prefix: athena-results/
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # The Glue Data Catalog stores the table definition Athena reads: column names and types,
+  # and where the CSV lives. The data itself stays in S3.
+  GlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: stay_the_course
+
+  ReturnsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref GlueDatabase
+      TableInput:
+        Name: historical_returns
+        TableType: EXTERNAL_TABLE
+        Parameters:
+          classification: csv
+          skip.header.line.count: "1"
+        StorageDescriptor:
+          Location: !Sub s3://${DataBucket}/historical-returns/
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+            Parameters:
+              field.delim: ","
+          Columns:
+            - { Name: year, Type: int }
+            - { Name: stocks, Type: double }
+            - { Name: bonds, Type: double }
+            - { Name: bills, Type: double }
+            - { Name: inflation, Type: double }
+
+  # Athena runs SQL straight over files in S3 and charges per byte scanned. This workgroup saves
+  # results to the data bucket and refuses any query that would scan more than 10 MB.
+  AthenaWorkGroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Name: !Ref AWS::StackName
+      State: ENABLED
+      RecursiveDeleteOption: true
+      WorkGroupConfiguration:
+        EnforceWorkGroupConfiguration: true
+        BytesScannedCutoffPerQuery: 10000000
+        ResultConfiguration:
+          OutputLocation: !Sub s3://${DataBucket}/athena-results/
+
+  # The queries from data/athena/, saved so they can be run from the Athena console.
+  SummaryQuery:
+    Type: AWS::Athena::NamedQuery
+    Properties:
+      Name: real-return-summary
+      Description: Average, compounded and volatility of real returns. Should match GET /assumptions.
+      Database: !Ref GlueDatabase
+      WorkGroup: !Ref AthenaWorkGroup
+      QueryString: |
+        WITH real_returns AS (
+            SELECT year,
+                   (1 + stocks) / (1 + inflation) - 1 AS real_stocks,
+                   (1 + bonds) / (1 + inflation) - 1 AS real_bonds
+            FROM historical_returns
+        )
+        SELECT COUNT(*) AS years, MIN(year) AS first_year, MAX(year) AS last_year,
+               AVG(real_stocks) AS stocks_average,
+               EXP(AVG(LN(1 + real_stocks))) - 1 AS stocks_compounded,
+               STDDEV_SAMP(real_stocks) AS stocks_volatility,
+               AVG(real_bonds) AS bonds_average,
+               EXP(AVG(LN(1 + real_bonds))) - 1 AS bonds_compounded,
+               STDDEV_SAMP(real_bonds) AS bonds_volatility,
+               CORR(real_stocks, real_bonds) AS stock_bond_correlation
+        FROM real_returns;
+
+  WorstDecadesQuery:
+    Type: AWS::Athena::NamedQuery
+    Properties:
+      Name: worst-decades-60-40
+      Description: The ten worst 10-year stretches for a 60/40 portfolio, after inflation.
+      Database: !Ref GlueDatabase
+      WorkGroup: !Ref AthenaWorkGroup
+      QueryString: |
+        WITH portfolio AS (
+            SELECT year,
+                   0.6 * ((1 + stocks) / (1 + inflation) - 1)
+                       + 0.4 * ((1 + bonds) / (1 + inflation) - 1) AS real_return
+            FROM historical_returns
+        ),
+        rolling AS (
+            SELECT year AS end_year,
+                   COUNT(*) OVER (ORDER BY year ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) AS years_in_window,
+                   EXP(SUM(LN(1 + real_return)) OVER (ORDER BY year ROWS BETWEEN 9 PRECEDING AND CURRENT ROW) / 10) - 1 AS yearly_return
+            FROM portfolio
+        )
+        SELECT end_year - 9 AS start_year, end_year, yearly_return
+        FROM rolling
+        WHERE years_in_window = 10
+        ORDER BY yearly_return
+        LIMIT 10;
+
+  WorstYearsQuery:
+    Type: AWS::Athena::NamedQuery
+    Properties:
+      Name: worst-stock-years
+      Description: The ten worst real years for stocks, with what bonds did the same year.
+      Database: !Ref GlueDatabase
+      WorkGroup: !Ref AthenaWorkGroup
+      QueryString: |
+        SELECT year,
+               (1 + stocks) / (1 + inflation) - 1 AS real_stocks,
+               (1 + bonds) / (1 + inflation) - 1 AS real_bonds,
+               inflation
+        FROM historical_returns
+        ORDER BY real_stocks
+        LIMIT 10;
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the API (the frontend is built with this as VITE_API_URL).
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  SiteUrl:
+    Description: The public website.
+    Value: !Sub https://${SiteDistribution.DomainName}
+  SiteBucketName:
+    Value: !Ref SiteBucket
+  DistributionId:
+    Value: !Ref SiteDistribution
+  DataBucketName:
+    Value: !Ref DataBucket
+  AthenaWorkGroupName:
+    Value: !Ref AthenaWorkGroup
