@@ -11,8 +11,12 @@ dist/
 # Secrets (never commit AWS keys or .env files)
 .env
 .env.*
+!.env.example
 
 # Editors and macOS
 .idea/
 .vscode/
 .DS_Store
+
+# AWS build output (deploy.sh)
+infra/build/
