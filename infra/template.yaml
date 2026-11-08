@@ -31,8 +31,9 @@ Resources:
           AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
           AWS_LWA_PORT: "8080"
           AWS_LWA_READINESS_CHECK_PATH: /assumptions
-          # Only the CloudFront site may call the API from a browser (see CorsConfig.java).
-          APP_CORS_ALLOWEDORIGINS: !Sub https://${SiteDistribution.DomainName}
+          # Only these sites may call the API from a browser (see CorsConfig.java): the CloudFront site,
+          # and its short free name on Vercel, which forwards every request to CloudFront (infra/vercel/).
+          APP_CORS_ALLOWEDORIGINS: !Sub https://${SiteDistribution.DomainName},https://staythecourse-app.vercel.app
       Events:
         Api:
           Type: HttpApi
