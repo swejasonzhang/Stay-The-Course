@@ -4,12 +4,12 @@ interface StatTileProps {
   value: string;
   detail?: string;
   color?: string;
-  hero?: boolean;
+  featured?: boolean;
 }
 
-export function StatTile({ label, value, detail, color, hero }: StatTileProps) {
+export function StatTile({ label, value, detail, color, featured }: StatTileProps) {
   return (
-    <div className={hero ? "stat-tile hero" : "stat-tile"}>
+    <div className={featured ? "stat-tile featured" : "stat-tile"}>
       <div className="label">
         {color && <span className="swatch" style={{ background: color }} aria-hidden="true" />}
         {label}

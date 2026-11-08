@@ -1,14 +1,16 @@
 import { useState } from "react";
 import type { Allocation } from "../../api/types";
 import { assetClassName, formatDollars, formatPercent, formatPoints } from "../../lib/format";
+import { useCompact } from "../../lib/useCompact";
 
 // One horizontal bar per asset class showing its current share, with a thin marker at its target share.
 // Built in plain HTML because it's just four bars; hovering or focusing a bar shows its details.
 export function AllocationChart({ allocations }: { allocations: Allocation[] }) {
   const [hovered, setHovered] = useState<string | null>(null);
+  const compact = useCompact();
   const largest = Math.max(...allocations.flatMap((a) => [a.currentWeight, a.targetWeight]));
-  // Scale so the biggest bar or target fills about 80% of the track, leaving room for its label.
-  const scale = Math.max(largest, 0.1) / 0.8;
+  // Scale so the biggest bar or target fills most of the track, leaving room for its label (more room on phones).
+  const scale = Math.max(largest, 0.1) / (compact ? 0.55 : 0.8);
 
   return (
     <div>
@@ -41,7 +43,7 @@ export function AllocationChart({ allocations }: { allocations: Allocation[] }) 
           </div>
         );
       })}
-      <p className="hint" aria-live="polite" style={{ minHeight: "1.5em", margin: "8px 0 0", color: "var(--text-secondary)" }}>
+      <p className="chart-note" aria-live="polite">
         {hovered ?? "Hover or tab to a bar for details."}
       </p>
     </div>

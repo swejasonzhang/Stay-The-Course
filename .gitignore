@@ -20,3 +20,6 @@ dist/
 
 # AWS build output (deploy.sh)
 infra/build/
+
+# Browser-automation screenshots
+.playwright-mcp/

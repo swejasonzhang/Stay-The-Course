@@ -5,8 +5,13 @@ import type { AssumptionsResponse, YearReturn } from "../../api/types";
 import { ChartFrame } from "../../components/ChartFrame";
 import { ChartTooltip } from "../../components/ChartTooltip";
 import { ErrorMessage } from "../../components/ErrorMessage";
+import { DataIcon } from "../../components/Icons";
+import { Insight } from "../../components/Insight";
+import { PageHeader } from "../../components/PageHeader";
+import { LoadingResults, SkeletonChart, SkeletonInsight, SkeletonTiles } from "../../components/Skeleton";
 import { StatTile } from "../../components/StatTile";
 import { formatPercent } from "../../lib/format";
+import { assumptionsInsight } from "../../lib/insights";
 import { niceScale } from "../../lib/scales";
 import { useRequest } from "../../lib/useRequest";
 
@@ -20,15 +25,24 @@ export function AssumptionsPage() {
 
   return (
     <>
-      <div className="page-intro">
-        <h2>Assumptions: the history behind the simulator</h2>
-        <p>
-          The retirement simulator doesn't assume a steady return. It replays these real years. Returns here are{" "}
-          <strong>real</strong>, meaning after inflation, so they show what money could actually buy.
-        </p>
-      </div>
-      <div className={loading ? "stack results loading" : "stack results"}>
+      <PageHeader eyebrow="Assumptions" icon={<DataIcon size={14} />} title="The history behind the simulator">
+        The retirement simulator doesn't assume a steady return. It replays these real years. Returns here are{" "}
+        <strong>real</strong>, meaning after inflation, so they show what money could actually buy.
+      </PageHeader>
+      <div className={loading && data ? "stack results loading" : "stack results"}>
         <ErrorMessage error={error} />
+        {!data && !error && (
+          <LoadingResults>
+            <SkeletonInsight />
+            <SkeletonTiles count={4} />
+            <SkeletonTiles count={4} />
+            <SkeletonTiles count={3} />
+            <div className="small-multiples">
+              <SkeletonChart height={260} />
+              <SkeletonChart height={260} />
+            </div>
+          </LoadingResults>
+        )}
         {data && <Results data={data} />}
       </div>
     </>
@@ -42,7 +56,8 @@ function Results({ data }: { data: AssumptionsResponse }) {
 
   return (
     <>
-      <h3 style={{ margin: 0 }}>Stocks (S&P 500 with dividends)</h3>
+      <Insight insight={assumptionsInsight(data)} />
+      <h2 className="group-heading">Stocks · S&P 500 with dividends</h2>
       <div className="kpi-row">
         <StatTile label="Average yearly return" value={formatPercent(data.realStocks.averageReturn)} />
         <StatTile label="Compounded yearly return" value={formatPercent(data.realStocks.compoundReturn)}
@@ -50,13 +65,14 @@ function Results({ data }: { data: AssumptionsResponse }) {
         <StatTile label="Volatility" value={formatPercent(data.realStocks.volatility)} detail="standard deviation" />
         <StatTile label="Worst year" value={formatPercent(data.realStocks.worstReturn)} detail={String(data.realStocks.worstYear)} />
       </div>
-      <h3 style={{ margin: 0 }}>Bonds (10-year US Treasury)</h3>
+      <h2 className="group-heading">Bonds · 10-year US Treasury</h2>
       <div className="kpi-row">
         <StatTile label="Average yearly return" value={formatPercent(data.realBonds.averageReturn)} />
         <StatTile label="Compounded yearly return" value={formatPercent(data.realBonds.compoundReturn)} />
         <StatTile label="Volatility" value={formatPercent(data.realBonds.volatility)} />
         <StatTile label="Worst year" value={formatPercent(data.realBonds.worstReturn)} detail={String(data.realBonds.worstYear)} />
       </div>
+      <h2 className="group-heading">Inflation and the mix</h2>
       <div className="kpi-row">
         <StatTile label="Average inflation" value={formatPercent(data.averageInflation)} detail="per year" />
         <StatTile label="Stock–bond correlation" value={data.stockBondCorrelation.toFixed(2)}
@@ -67,6 +83,7 @@ function Results({ data }: { data: AssumptionsResponse }) {
       <div className="small-multiples">
         <ChartFrame
           title="Real stock returns by year"
+          subtitle="After inflation. Both charts share one scale."
           legend={[
             { label: "Gain", color: "var(--series-1)", shape: "bar" },
             { label: "Loss", color: "var(--negative)", shape: "bar" },
@@ -76,6 +93,7 @@ function Results({ data }: { data: AssumptionsResponse }) {
         />
         <ChartFrame
           title="Real bond returns by year"
+          subtitle="After inflation. Both charts share one scale."
           legend={[
             { label: "Gain", color: "var(--series-1)", shape: "bar" },
             { label: "Loss", color: "var(--negative)", shape: "bar" },
@@ -84,7 +102,7 @@ function Results({ data }: { data: AssumptionsResponse }) {
           table={<ReturnsTable rows={data.yearly} />}
         />
       </div>
-      <p className="empty" style={{ margin: 0, fontSize: "0.85rem" }}>Source: {data.source}.</p>
+      <p className="source-note">Source: {data.source}.</p>
     </>
   );
 }

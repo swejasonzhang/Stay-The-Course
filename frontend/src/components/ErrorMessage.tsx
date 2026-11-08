@@ -1,4 +1,5 @@
 import { ApiError } from "../api/client";
+import { WarningIcon } from "./Icons";
 
 interface ErrorMessageProps {
   error: unknown;
@@ -16,7 +17,7 @@ export function ErrorMessage({ error, shownFields = [] }: ErrorMessageProps) {
     : [];
   return (
     <div className="message error" role="alert">
-      <span className="icon" aria-hidden="true">!</span>
+      <span className="icon" aria-hidden="true"><WarningIcon size={18} /></span>
       <div>
         <div>{apiError ? apiError.message : "Something went wrong."}</div>
         {otherFields.map(([field, message]) => (
