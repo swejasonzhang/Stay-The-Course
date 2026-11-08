@@ -24,5 +24,3 @@ infra/build/
 # Browser-automation screenshots
 .playwright-mcp/
 
-# Vercel CLI link folder (created by `vercel link`)
-.vercel/

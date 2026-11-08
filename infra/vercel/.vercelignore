@@ -1,3 +1,0 @@
-# This project only forwards requests to CloudFront, so upload nothing but its config.
-*
-!vercel.json

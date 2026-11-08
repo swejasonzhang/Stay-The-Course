@@ -8,8 +8,12 @@ import type {
   SimulationResponse,
 } from "./types";
 
-// Where the backend lives. Set VITE_API_URL at build time for production; locally it's port 8080.
-export const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8080").replace(/\/$/, "");
+// Where the backend lives. `npm run dev` uses the local Spring Boot server; production builds
+// (deploy.sh, and Vercel's automatic builds from GitHub) use the API on AWS. VITE_API_URL overrides both.
+const DEFAULT_API_URL = import.meta.env.PROD
+  ? "https://2nhqrzydma.execute-api.us-east-1.amazonaws.com"
+  : "http://localhost:8080";
+export const API_URL = (import.meta.env.VITE_API_URL ?? DEFAULT_API_URL).replace(/\/$/, "");
 
 // Every failed request becomes an ApiError. For a 422, fieldErrors maps each bad field
 // (e.g. "years" or "holdings[0].value") to the backend's message, so the form can show it in place.

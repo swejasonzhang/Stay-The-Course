@@ -32,8 +32,8 @@ Resources:
           AWS_LWA_PORT: "8080"
           AWS_LWA_READINESS_CHECK_PATH: /assumptions
           # Only these sites may call the API from a browser (see CorsConfig.java): the CloudFront site,
-          # and its short free name on Vercel, which forwards every request to CloudFront (infra/vercel/).
-          APP_CORS_ALLOWEDORIGINS: !Sub https://${SiteDistribution.DomainName},https://staythecourse-app.vercel.app
+          # and the copy Vercel builds from GitHub at a short free address.
+          APP_CORS_ALLOWEDORIGINS: !Sub https://${SiteDistribution.DomainName},https://stay-the-course-app.vercel.app
       Events:
         Api:
           Type: HttpApi
