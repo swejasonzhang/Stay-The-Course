@@ -107,12 +107,6 @@ export const MonitorIcon = ({ size }: { size?: number }) => (
   </Icon>
 );
 
-export const BookIcon = ({ size }: { size?: number }) => (
-  <Icon size={size}>
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15A2.5 2.5 0 0 0 6.5 22H20v-5" />
-  </Icon>
-);
-
 export function GitHubIcon({ size = 18 }: { size?: number }) {
   return (
     <svg viewBox="0 0 16 16" width={size} height={size} fill="currentColor" aria-hidden="true" focusable="false">

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { BalanceIcon, BookIcon, CostIcon, DataIcon, GitHubIcon, GoalsIcon, HomeIcon, LogoMark } from "./components/Icons";
+import { BalanceIcon, CostIcon, DataIcon, GitHubIcon, GoalsIcon, HomeIcon, LogoMark } from "./components/Icons";
 import { PageSkeleton } from "./components/Skeleton";
 import { ThemeSwitch } from "./components/ThemeSwitch";
 import { OverviewPage } from "./features/overview/OverviewPage";
@@ -109,9 +109,6 @@ export function App() {
           <nav aria-label="Project links">
             <a href={REPO_URL} target="_blank" rel="noreferrer">
               <GitHubIcon size={14} /> Source
-            </a>
-            <a href={`${REPO_URL}/tree/main/docs`} target="_blank" rel="noreferrer">
-              <BookIcon size={14} /> How it works
             </a>
           </nav>
         </div>
