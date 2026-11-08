@@ -15,7 +15,9 @@ ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
 ARTIFACTS="${STACK}-artifacts-${ACCOUNT}-${REGION}"
 
 echo "1/6 Building the backend jar"
-(cd "$ROOT/backend" && ./mvnw -q -B package -DskipTests)
+# "clean" deletes old build output first. Folders synced by iCloud can gain stray copies such as
+# "StayTheCourseApplication 2.class", which would give the jar two main classes.
+(cd "$ROOT/backend" && ./mvnw -q -B clean package -DskipTests)
 rm -rf "$BUILD/backend"
 mkdir -p "$BUILD/backend"
 cp "$ROOT"/backend/target/stay-the-course-*.jar "$BUILD/backend/app.jar"

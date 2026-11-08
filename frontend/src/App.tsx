@@ -1,13 +1,22 @@
-import { useEffect, useState, type ComponentType } from "react";
-import { AssumptionsPage } from "./features/assumptions/AssumptionsPage";
-import { FeesPage } from "./features/fees/FeesPage";
-import { PortfolioPage } from "./features/portfolio/PortfolioPage";
-import { RetirementPage } from "./features/retirement/RetirementPage";
+import { lazy, Suspense, useEffect, useState, type ComponentType, type LazyExoticComponent } from "react";
+
+// Each tab's code (and the chart library) is downloaded only when that tab is first opened,
+// so the first page loads faster. This is "code-splitting".
+const FeesPage = lazy(() => import("./features/fees/FeesPage").then((m) => ({ default: m.FeesPage })));
+const RetirementPage = lazy(() =>
+  import("./features/retirement/RetirementPage").then((m) => ({ default: m.RetirementPage })),
+);
+const PortfolioPage = lazy(() =>
+  import("./features/portfolio/PortfolioPage").then((m) => ({ default: m.PortfolioPage })),
+);
+const AssumptionsPage = lazy(() =>
+  import("./features/assumptions/AssumptionsPage").then((m) => ({ default: m.AssumptionsPage })),
+);
 
 interface Page {
   id: string;
   label: string;
-  component: ComponentType;
+  component: LazyExoticComponent<ComponentType>;
 }
 
 // One tab per investing principle, plus the data behind the simulator.
@@ -48,7 +57,9 @@ export function App() {
         ))}
       </nav>
       <main>
-        <Current />
+        <Suspense fallback={<p className="empty">Loading…</p>}>
+          <Current />
+        </Suspense>
       </main>
       <footer>
         Educational project, not investment advice. Not affiliated with or endorsed by Vanguard. Historical returns:

@@ -61,6 +61,12 @@ public record PortfolioRequest(
         if (holdings == null) {
             return true;
         }
-        return holdings.stream().filter(h -> h != null && h.value() != null).mapToDouble(Holding::value).sum() > 0;
+        double total = 0;
+        for (Holding holding : holdings) {
+            if (holding != null && holding.value() != null) {
+                total += holding.value();
+            }
+        }
+        return total > 0;
     }
 }

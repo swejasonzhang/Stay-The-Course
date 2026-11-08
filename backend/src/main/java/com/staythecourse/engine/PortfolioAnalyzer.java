@@ -25,7 +25,7 @@ public final class PortfolioAnalyzer {
         double total = 0;
         double annualFees = 0;
         for (Holding holding : holdings) {
-            current.merge(holding.assetClass(), holding.value(), Double::sum);
+            current.put(holding.assetClass(), valueOf(current, holding.assetClass()) + holding.value());
             total += holding.value();
             annualFees += holding.value() * holding.expenseRatio();
         }

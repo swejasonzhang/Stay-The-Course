@@ -1,7 +1,6 @@
 package com.staythecourse.engine;
 
 import java.util.List;
-import java.util.function.ToDoubleFunction;
 
 // Summary statistics over the historical data: averages, volatility, best and worst years.
 public final class HistoryStatistics {
@@ -13,9 +12,15 @@ public final class HistoryStatistics {
         if (history.size() < 2) {
             throw new IllegalArgumentException("need at least 2 years of history");
         }
-        double[] stocks = values(history, MarketYear::realStockReturn);
-        double[] bonds = values(history, MarketYear::realBondReturn);
-        double[] inflation = values(history, MarketYear::inflation);
+        double[] stocks = new double[history.size()];
+        double[] bonds = new double[history.size()];
+        double[] inflation = new double[history.size()];
+        for (int i = 0; i < history.size(); i++) {
+            MarketYear year = history.get(i);
+            stocks[i] = year.realStockReturn();
+            bonds[i] = year.realBondReturn();
+            inflation[i] = year.inflation();
+        }
         return new HistorySummary(
                 history.getFirst().year(),
                 history.getLast().year(),
@@ -45,10 +50,6 @@ public final class HistoryStatistics {
                 returns[worst],
                 history.get(best).year(),
                 returns[best]);
-    }
-
-    private static double[] values(List<MarketYear> history, ToDoubleFunction<MarketYear> field) {
-        return history.stream().mapToDouble(field).toArray();
     }
 
     static double mean(double[] values) {
